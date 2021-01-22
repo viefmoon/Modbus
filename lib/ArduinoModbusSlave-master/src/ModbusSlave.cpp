@@ -510,58 +510,66 @@ uint8_t Modbus::writeArrayToBuffer(int offset, uint16_t *str, uint8_t length)
  */
 bool Modbus::readRequest()
 {
-    // Read one data packet and report when it's received completely.
+    // Leer un paquete de datos e informar cuando se recibe por completo.
     uint16_t length = _serialStream.available();
     if (length > 0)
     {
-        // If the reading hasn't started yet.
+        
+        // Si la lectura aún no ha comenzado.
         if (!_isRequestBufferReading)
         {
-            // And it already took 1.5T since the last message.
+            
+        // Y ya se necesitaron 1.5T desde el último mensaje.
             if ((micros() - _lastCommunicationTime) > (_halfCharTimeInMicroSecond * MODBUS_HALF_SILENCE_MULTIPLIER))
             {
-                // Start the reading and clear the buffer.
+                // Inicie la lectura y borre el búfer.
                 _requestBufferLength = 0;
                 _isRequestBufferReading = true;
             }
             else
             {
-                // Discard the incoming data.
+                
+                // Descartar los datos entrantes.
                 _serialStream.read();
             }
         }
 
-        // If we started reading.
+        // Si empezamos a leer.
         if (_isRequestBufferReading)
         {
-            // Check if the buffer is not already full.
+            
+            // Compruebe si el búfer no está ya lleno.
             if (_requestBufferLength == MODBUS_MAX_BUFFER)
             {
-                // And if so, stop reading.
+            // Y si es así, deja de leer.
                 _isRequestBufferReading = false;
             }
 
-            // Check if there is enough room for the incoming bytes in the buffer.
+            
+            // Compruebe si hay suficiente espacio para los bytes entrantes en el búfer.
             length = min(length, MODBUS_MAX_BUFFER - _requestBufferLength);
-            // Read the data from the serial stream into the buffer.
-            length = _serialStream.readBytes(_requestBuffer + _requestBufferLength, MODBUS_MAX_BUFFER - _requestBufferLength);
 
-            // If this is the first read cycle, check the address to reject irrelevant requests.
+            // Leer los datos del flujo serial en el búfer.
+            length = _serialStream.readBytes(_requestBuffer + _requestBufferLength, MODBUS_MAX_BUFFER - _requestBufferLength);
+            
+            // Si este es el primer ciclo de lectura, verifique la dirección para rechazar solicitudes irrelevantes.
             if (_requestBufferLength == 0 && length > MODBUS_ADDRESS_INDEX && !Modbus::relevantAddress(_requestBuffer[MODBUS_ADDRESS_INDEX]))
             {
-                // This is not one of the addresses on this device, stop reading.
+                
+                // Esta no es una de las direcciones de este dispositivo, deja de leer.
                 _isRequestBufferReading = false;
             }
 
-            // Move the buffer pointer forward by the amount of bytes read from the serial stream.
+            
+            // Mueve el puntero del búfer hacia adelante la cantidad de bytes leídos del flujo en serie.
             _requestBufferLength += length;
             _totalBytesReceived += length;
         }
 
-        // Save the time of the last received byte(s).
+        // Guarde la hora del último byte (s) recibido (s). 
         _lastCommunicationTime = micros();
 
-        // Wait for more data.
+        // Espere más datos.
         return false;
     }
     else
