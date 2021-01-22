@@ -6,7 +6,6 @@
 #define SERIAL_BAUDRATE 9600 
 #define SERIAL_PORT Serial
 
-// The position in the array determines the address. Position 0 will correspond to Coil, Discrete input or Input register 0.
 uint8_t digital_pins[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}; // Add the pins you want to read as a Discrete input.
 uint8_t analog_pins[] = {A0, A1, A2, A3, A4, A5};                  // Add the pins you want to read as a Input register.
 
