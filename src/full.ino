@@ -9,37 +9,38 @@
 uint8_t digital_pins[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}; // Add the pins you want to read as a Discrete input.
 uint8_t analog_pins[] = {A0, A1, A2, A3, A4, A5};                  // Add the pins you want to read as a Input register.
 
-// The EEPROM layout is as follows
-// The first 50 bytes are reserved for storing digital pin pinMode_setting
-// Byte 51 and up are free to write any uint16_t to.
+// El diseño de EEPROM es el siguiente
+// Los primeros 50 bytes están reservados para almacenar pin digital pinMode_setting
+// Byte 51 y posteriores son libres para escribir cualquier uint16_t.
 
-// You shouldn't have to change anything below this to get this example to work
+// // No debería tener que cambiar nada debajo de esto para que este ejemplo funcione
 
 uint8_t digital_pins_size = sizeof(digital_pins) / sizeof(digital_pins[0]); // Get the size of the digital_pins array
 uint8_t analog_pins_size = sizeof(analog_pins) / sizeof(analog_pins[0]);    // Get the size of the analog_pins array
 
-// Modbus object declaration
+
+// Declaración de objeto Modbus
 Modbus slave(SERIAL_PORT, SLAVE_ID, RS485_CTRL_PIN);
 
 void setup()
 {
-    // Set the defined digital pins to the value stored in EEPROM.
+    // Establezca los pines digitales definidos en el valor almacenado en EEPROM.   
     for (uint16_t i = 0; i < digital_pins_size; i++)
     {
         uint8_t pinMode_setting;
-        // Get the pinMode_setting of this digital pin from the EEPROM.
+    // Obtenga el pinMode_setting de este pin digital de la EEPROM.
         EEPROM.get(i, pinMode_setting);
 
         pinMode(digital_pins[i], pinMode_setting);
     }
 
-    // Set the defined analog pins to input mode.
+    // Establece los pines analógicos definidos en modo de entrada.
     for (int i = 0; i < analog_pins_size; i++)
     {
         pinMode(analog_pins[i], INPUT);
     }
 
-    // Register functions to call when a certain function code is received.
+    // Registra funciones para llamar cuando se recibe un determinado código de función
     slave.cbVector[CB_READ_COILS] = readDigital;
     slave.cbVector[CB_READ_DISCRETE_INPUTS] = readDigital;
     slave.cbVector[CB_WRITE_COILS] = writeDigitalOut;
@@ -47,69 +48,73 @@ void setup()
     slave.cbVector[CB_READ_HOLDING_REGISTERS] = readMemory;
     slave.cbVector[CB_WRITE_HOLDING_REGISTERS] = writeMemory;
 
-    // Set the serial port and slave to the given baudrate.
+    // Establezca el puerto serie y el esclavo a la velocidad de transmisión dada.
     SERIAL_PORT.begin(SERIAL_BAUDRATE);
     slave.begin(SERIAL_BAUDRATE);
 }
 
 void loop()
 {
-    // Listen for modbus requests on the serial port.
-    // When a request is received it's going to get validated.
-    // And if there is a function registered to the received function code, this function will be executed.
+    // Escuche las solicitudes de Modbus en el puerto serie.
+    // Cuando se recibe una solicitud, se validará.
+    // Y si hay una función registrada en el código de función recibido, esta función se ejecutará.
     slave.poll();
 }
 
-// Modbus handler functions
-// The handler functions must return an uint8_t and take the following parameters:
-//     uint8_t  fc - function code
-//     uint16_t address - first register/coil address
-//     uint16_t length/status - length of data / coil status
+// Funciones del manejador Modbus
+// Las funciones del controlador deben devolver un uint8_t y tomar los siguientes parámetros:
+// uint8_t fc - código de función
+// dirección uint16_t - primer registro / dirección de bobina
+// uint16_t length / status - longitud de los datos / estado de la bobina
 
-// Handle the function codes Read Input Status (FC=01/02) and write back the values from the digital pins (input status).
+// Manejar los códigos de función Leer estado de entrada (FC = 01/02) y escribir los valores de los pines digitales (estado de entrada).
 uint8_t readDigital(uint8_t fc, uint16_t address, uint16_t length)
 {
-    // Check if the requested addresses exist in the array
+    // Verifica si las direcciones solicitadas existen en la matriz
     if (address > digital_pins_size || (address + length) > digital_pins_size)
     {
         return STATUS_ILLEGAL_DATA_ADDRESS;
     }
 
-    // Read the digital inputs.
+    // Leer las entradas digitales.
     for (int i = 0; i < length; i++)
     {
-        // Write the state of the digital pin to the response buffer.
+    // Escribe el estado del pin digital en el búfer de respuesta.
         slave.writeCoilToBuffer(i, digitalRead(digital_pins[address + i]));
     }
 
     return STATUS_OK;
 }
 
-// Handle the function code Read Holding Registers (FC=03) and write back the values from the EEPROM (holding registers).
+// Manejar el código de función Read Holding Registers (FC = 03) y volver a escribir los valores de EEPROM (Holding Registers).
 uint8_t readMemory(uint8_t fc, uint16_t address, uint16_t length)
 {
-    // Read the requested EEPROM registers.
+
+// Leer los registros EEPROM solicitados.
     for (int i = 0; i < length; i++)
     {
-        // Below 50 is reserved for pinModes, above 50 is free to use.
+        // Por debajo de 50 está reservado para pinModes, por encima de 50 es de uso gratuito.
         if (address + i <= 50)
         {
             uint8_t value;
 
-            // Read a value from the EEPROM.
+            
+            // Leer un valor de la EEPROM.
             EEPROM.get((address + i), value);
 
-            // Write the pinMode from EEPROM to the response buffer.
+            
+            // Escribe el pinMode de EEPROM en el búfer de respuesta.
             slave.writeRegisterToBuffer(i, value);
         }
         else
         {
             uint16_t value;
 
-            // Read a value from the EEPROM.
+            
+            // Leer un valor de la EEPROM.
             EEPROM.get(address + (i * 2), value);
-
-            // Write the value from EEPROM to the response buffer.
+            
+            // Escribe el valor de EEPROM en el búfer de respuesta.
             slave.writeRegisterToBuffer(i, value);
         }
     }
@@ -117,29 +122,30 @@ uint8_t readMemory(uint8_t fc, uint16_t address, uint16_t length)
     return STATUS_OK;
 }
 
-// Handle the function code Read Input Registers (FC=04) and write back the values from the analog input pins (input registers).
+// Manejar el código de función Leer registros de entrada (FC = 04) y escribir los valores de los pines de entrada analógica (registros de entrada).
 uint8_t readAnalogIn(uint8_t fc, uint16_t address, uint16_t length)
 {
-    // Check if the requested addresses exist in the array
+    // Verifica si las direcciones solicitadas existen en la matriz
     if (address > analog_pins_size || (address + length) > analog_pins_size)
     {
         return STATUS_ILLEGAL_DATA_ADDRESS;
     }
 
-    // Read the analog inputs
+    // Leer las entradas analógicas
     for (int i = 0; i < length; i++)
     {
-        // Write the state of the analog pin to the response buffer.
+        // Escribe el estado del pin analógico en el búfer de respuesta.
         slave.writeRegisterToBuffer(i, analogRead(analog_pins[address + i]));
     }
 
     return STATUS_OK;
 }
 
-// Handle the function codes Force Single Coil (FC=05) and Force Multiple Coils (FC=15) and set the digital output pins (coils).
+// Maneje los códigos de función Force Single Coil (FC = 05) y Force Multiple Coils (FC = 15) y configure los pines de salida digital (bobinas).
 uint8_t writeDigitalOut(uint8_t fc, uint16_t address, uint16_t length)
 {
-    // Check if the requested addresses exist in the array
+    
+    // Verifica si las direcciones solicitadas existen en la matriz
     if (address > digital_pins_size || (address + length) > digital_pins_size)
     {
         return STATUS_ILLEGAL_DATA_ADDRESS;
@@ -148,48 +154,48 @@ uint8_t writeDigitalOut(uint8_t fc, uint16_t address, uint16_t length)
     // Set the output pins to the given state.
     for (int i = 0; i < length; i++)
     {
-        // Write the value in the input buffer to the digital pin.
+        // Establece los pines de salida en el estado dado.
         digitalWrite(digital_pins[address + i], slave.readCoilFromBuffer(i));
     }
 
     return STATUS_OK;
 }
 
-// Handle the function codes Write Holding Register(s) (FC=06, FC=16) and write data to the eeprom.
+// Manejar los códigos de función Escribir registro (s) de retención (FC = 06, FC = 16) y escribir datos en la eeprom.
 uint8_t writeMemory(uint8_t fc, uint16_t address, uint16_t length)
 {
-    // Write the received data to EEPROM.
+    // Escribe los datos recibidos en EEPROM.
     for (int i = 0; i < length; i++)
     {
         if (address + i <= 50)
         {
-            // Check if the requested addresses exist in the array.
+            // Verifique si las direcciones solicitadas existen en la matriz.
             if (address + i > digital_pins_size)
             {
                 return STATUS_ILLEGAL_DATA_ADDRESS;
             }
 
-            // Read the value from the input buffer.
+    // Leer el valor del búfer de entrada.
             uint8_t value = slave.readRegisterFromBuffer(i);
 
-            // Check if the value is 0 (INPUT) or 1 (OUTPUT).
+            // Comprueba si el valor es 0 (INPUT) or 1 (OUTPUT).
             if (value != INPUT && value != OUTPUT)
             {
                 return STATUS_ILLEGAL_DATA_VALUE;
             }
 
-            // Store the received value in the EEPROM.
+            // Almacena el valor recibido en la EEPROM.
             EEPROM.put(address + i, value);
 
-            // Set the pinmode to the received value.
+            // Establece el modo pin en el valor recibido
             pinMode(digital_pins[address + i], value);
         }
         else
         {
-            // Read the value from the input buffer.
+            // Leer el valor del búfer de entrada.  
             uint16_t value = slave.readRegisterFromBuffer(i);
-
-            // Store the received value in the EEPROM.
+ 
+            // Almacena el valor recibido en la EEPROM.
             EEPROM.put(address + (i * 2), value);
         }
     }

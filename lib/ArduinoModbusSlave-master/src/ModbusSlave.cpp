@@ -207,48 +207,49 @@ void Modbus::begin(uint64_t baudrate)
     _requestBufferLength = 0;
 }
 
+
 /**
- * Checks if we have a complete request, parses the request, executes the
- * corresponding registered callback and writes the response.
+ * Comprueba si tenemos una solicitud completa, analiza la solicitud, ejecuta la
+ * correspondiente devolución de llamada registrada y escribe la respuesta.
  *
- * @return The number of bytes written as response.
+ * @return El número de bytes escritos como respuesta.
  */
 uint8_t Modbus::poll()
-{
-    // If we are still writing a message, let it finish first.
+{   
+    // Si todavía estamos escribiendo un mensaje, déjelo terminar primero.
     if (_isResponseBufferWriting)
     {
         return Modbus::writeResponse();
     }
 
-    // Wait for one complete request packet.
+    // Espere un paquete de solicitud completo.
     if (!Modbus::readRequest())
     {
         return 0;
     }
 
-    // Prepare the output buffer.
+    // Prepara el búfer de salida.
     memset(_responseBuffer, 0, MODBUS_MAX_BUFFER);
     _responseBuffer[MODBUS_ADDRESS_INDEX] = _requestBuffer[MODBUS_ADDRESS_INDEX];
     _responseBuffer[MODBUS_FUNCTION_CODE_INDEX] = _requestBuffer[MODBUS_FUNCTION_CODE_INDEX];
     _responseBufferLength = MODBUS_FRAME_SIZE;
 
-    // Validate the incoming request.
+    // Valida la solicitud entrante.
     if (!Modbus::validateRequest())
     {
         return 0;
     }
 
-    // Execute the incoming request and create the response.
+    // Ejecuta la solicitud entrante y crea la respuesta.
     uint8_t status = Modbus::createResponse();
 
-    // Check if the callback execution succeeded.
+    // Verifique si la ejecución de la devolución de llamada tuvo éxito.
     if (status != STATUS_OK)
     {
         return Modbus::reportException(status);
     }
 
-    // Write the create response to the serial interface.
+    // Escribe la respuesta de creación en la interfaz serial.
     return Modbus::writeResponse();
 }
 
