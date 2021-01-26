@@ -1,20 +1,3 @@
-/**
- * Copyright (c) 2015, Yaacov Zamir <kobi.zamir@gmail.com>
- * Copyright (c) 2017, Andrew Voznytsa <andrew.voznytsa@gmail.com>, FC_WRITE_REGISTER and FC_WRITE_MULTIPLE_COILS support
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF  THIS SOFTWARE.
- */
-
 #ifndef MODBUSSLAVE_H
 #define MODBUSSLAVE_H
 #include <Arduino.h>
@@ -99,7 +82,7 @@ class Modbus
 public:
   Modbus(uint8_t unitAddress = MODBUS_DEFAULT_UNIT_ADDRESS, int transmissionControlPin = MODBUS_CONTROL_PIN_NONE);
   Modbus(ModbusSlave *slaves, uint8_t numberOfSlaves, int transmissionControlPin = MODBUS_CONTROL_PIN_NONE);
-  Modbus(Stream &serialStream, uint8_t unitAddress = MODBUS_DEFAULT_UNIT_ADDRESS, int transmissionControlPin = MODBUS_CONTROL_PIN_NONE);
+  Modbus(Stream &serialStream, uint8_t unitAddress = MODBUS_DEFAULT_UNIT_ADDRESS, int transmissionControlPin = MODBUS_CONTROL_PIN_NONE);//Este esta en FULL
   Modbus(Stream &serialStream, ModbusSlave *slaves, uint8_t numberOfSlaves, int transmissionControlPin = MODBUS_CONTROL_PIN_NONE);
 
   void begin(uint64_t boudRate);
@@ -121,7 +104,7 @@ public:
   uint64_t getTotalBytesSent();
   uint64_t getTotalBytesReceived();
 
-  // This cbVector is a pointer to cbVector of the first slave, to allow shorthand syntax:
+// Este cbVector es un puntero a cbVector del primer esclavo, para permitir la sintaxis abreviada:
   //     Modbus slave(SLAVE_ID, CTRL_PIN);
   //     slave.cbVector[CB_WRITE_COILS] = writeDigitalOut;
   // Instead of the complete:
