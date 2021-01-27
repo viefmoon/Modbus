@@ -8,7 +8,7 @@
 #define MODBUS_FUNCTION_CODE_INDEX 1
 #define MODBUS_DATA_INDEX 2
 
-#define MODBUS_BROADCAST_ADDRESS 0
+#define MODBUS_BROADCAST_ADDRESS 1
 #define MODBUS_ADDRESS_MIN 1
 #define MODBUS_ADDRESS_MAX 247
 
@@ -38,11 +38,30 @@ uint8_t Modbus::poll()
         return 0;
     }
 
+    Serial.println("Preparando el búfer de salida...");
     // Prepara el búfer de salida.
     memset(_responseBuffer, 0, MODBUS_MAX_BUFFER);
     _responseBuffer[MODBUS_ADDRESS_INDEX] = _requestBuffer[MODBUS_ADDRESS_INDEX];
     _responseBuffer[MODBUS_FUNCTION_CODE_INDEX] = _requestBuffer[MODBUS_FUNCTION_CODE_INDEX];
     _responseBufferLength = MODBUS_FRAME_SIZE;
+
+
+    Serial.print(_responseBuffer[0],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[1],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[2],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[3],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[4],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[5],HEX);
+    Serial.print(" ");
+    Serial.print(_responseBuffer[6],HEX);
+    Serial.print(" ");
+    Serial.println(_responseBuffer[7],HEX);
+    Serial.println("");
 
     // Valida la solicitud entrante.
     if (!Modbus::validateRequest())
@@ -190,9 +209,10 @@ bool Modbus::readRequest()
 {
     // Leer un paquete de datos e informar cuando se recibe por completo.
     uint16_t length = _serialStream.available();
+    //Serial.print("Seriallength: ");
+    //Serial.println(length);
     if (length > 0)
-    {
-        
+    {  
         // Si la lectura aún no ha comenzado.
         if (!_isRequestBufferReading)
         {   
@@ -205,7 +225,6 @@ bool Modbus::readRequest()
             }
             else
             {
-                
                 // Descartar los datos entrantes.
                 _serialStream.read();
             }
@@ -214,7 +233,6 @@ bool Modbus::readRequest()
         // Si empezamos a leer.
         if (_isRequestBufferReading)
         {
-            
             // Compruebe si el búfer no está ya lleno.
             if (_requestBufferLength == MODBUS_MAX_BUFFER)
             {
@@ -225,13 +243,30 @@ bool Modbus::readRequest()
             // Compruebe si hay suficiente espacio para los bytes entrantes en el búfer.
             length = min(length, MODBUS_MAX_BUFFER - _requestBufferLength);
 
-            // Leer los datos del flujo serial en el búfer.
+            // Leer los datos del flujo serial en el búfer
+
             length = _serialStream.readBytes(_requestBuffer + _requestBufferLength, MODBUS_MAX_BUFFER - _requestBufferLength);
-            
+
+                // Serial.print(_requestBuffer[0],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[1],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[2],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[3],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[4],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[5],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[6],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[7],HEX);
+                // Serial.println(" ");
+
             // Si este es el primer ciclo de lectura, verifique la dirección para rechazar solicitudes irrelevantes.
             if (_requestBufferLength == 0 && length > MODBUS_ADDRESS_INDEX && !Modbus::relevantAddress(_requestBuffer[MODBUS_ADDRESS_INDEX]))
             {
-                
                 // Esta no es una de las direcciones de este dispositivo, deja de leer.
                 _isRequestBufferReading = false;
             }
@@ -252,6 +287,7 @@ bool Modbus::readRequest()
         // Si todavía estamos leyendo pero no se han recibido datos para 1.5T, entonces este mensaje de solicitud está completo.
         if (_isRequestBufferReading && ((micros() - _lastCommunicationTime) > (_halfCharTimeInMicroSecond * MODBUS_HALF_SILENCE_MULTIPLIER)))
         {
+            Serial.println("Solicitud completa: ");
             // Detenga la lectura para permitir la lectura de nuevos mensajes.
             _isRequestBufferReading = false;
         }
@@ -261,6 +297,23 @@ bool Modbus::readRequest()
             return false;
         }
     }
+
+                Serial.print(_requestBuffer[0],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[1],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[2],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[3],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[4],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[5],HEX);
+                Serial.print(" ");
+                Serial.print(_requestBuffer[6],HEX);
+                Serial.print(" ");
+                Serial.println(_requestBuffer[7],HEX);
+                Serial.println(" ");
 
     return !_isRequestBufferReading && (_requestBufferLength >= MODBUS_FRAME_SIZE);
 }
@@ -282,6 +335,8 @@ bool Modbus::validateRequest()
     bool report_illegal_function=false;
     
     // Verifica la validez de los datos según el código de la función.
+    Serial.print("Codigo de funcion:");
+    Serial.println(_requestBuffer[MODBUS_FUNCTION_CODE_INDEX]);
     switch (_requestBuffer[MODBUS_FUNCTION_CODE_INDEX])
     {
         case FC_READ_EXCEPTION_STATUS:
@@ -330,13 +385,20 @@ bool Modbus::validateRequest()
     // Si los datos recibidos son más pequeños de lo que esperamos, ignore esta solicitud.
     if (_requestBufferLength < expected_requestBufferSize)
     {
+        Serial.print("Buffer recibido menor al esperado ");
         return false;
     }
 
     // Verifique la crc, y si no es correcta ignore la solicitud.
     uint16_t crc = readCRC(_requestBuffer, _requestBufferLength);
+    Serial.print("CRC leido: ");
+    Serial.println(crc,HEX);
+    Serial.print("CRC calculado: ");
+    Serial.println(Modbus::calculateCRC(_requestBuffer, _requestBufferLength - MODBUS_CRC_LENGTH),HEX);
+
     if (Modbus::calculateCRC(_requestBuffer, _requestBufferLength - MODBUS_CRC_LENGTH) != crc)
     {
+        Serial.println("CRC incorrecto");
         return false;
     }
     

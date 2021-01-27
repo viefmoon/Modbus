@@ -14,7 +14,7 @@
 #define MODBUS_FUNCTION_CODE_INDEX 1
 #define MODBUS_DATA_INDEX 2
 
-#define MODBUS_BROADCAST_ADDRESS 0
+#define MODBUS_BROADCAST_ADDRESS 00
 #define MODBUS_ADDRESS_MIN 1
 #define MODBUS_ADDRESS_MAX 247
 
@@ -445,8 +445,11 @@ bool Modbus::relevantAddress(uint8_t unitAddress)
     // Itere sobre todos los esclavos y compruebe si escucha la dirección dada, si es así, devuelva verdadero.
     for (uint8_t i = 0; i < _numberOfSlaves; ++i)
     {
+        Serial.print("Direccion de un esclavo: ");
+        Serial.print(_slaves[i].getUnitAddress(),HEX);
         if (_slaves[i].getUnitAddress() == unitAddress)
         {
+            Serial.println(" ---Direccion Correcta");
             return true;
         }
     }
