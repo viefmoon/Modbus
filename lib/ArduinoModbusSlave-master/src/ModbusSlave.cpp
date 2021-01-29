@@ -445,11 +445,12 @@ bool Modbus::relevantAddress(uint8_t unitAddress)
     // Itere sobre todos los esclavos y compruebe si escucha la dirección dada, si es así, devuelva verdadero.
     for (uint8_t i = 0; i < _numberOfSlaves; ++i)
     {
-        Serial.print("Direccion de un esclavo: ");
-        Serial.print(_slaves[i].getUnitAddress(),HEX);
+        // Serial.print("Direccion de un esclavo: ");
+        // Serial.print(_slaves[i].getUnitAddress(),HEX);
         if (_slaves[i].getUnitAddress() == unitAddress)
         {
-            Serial.println(" ---Direccion Correcta");
+            // Serial.println(" --- Encontrada");
+            // Serial.println("");
             return true;
         }
     }
@@ -489,7 +490,6 @@ uint8_t Modbus::executeCallback(uint8_t slaveAddress, uint8_t callbackIndex, uin
     }
     // ¡No hay retorno en bucle para una transmisión, por lo tanto, regrese aquí sin error si es una transmisión!
     return slaveAddress == MODBUS_BROADCAST_ADDRESS ? STATUS_ACKNOWLEDGE : STATUS_ILLEGAL_FUNCTION;
-
 }
 
 
@@ -525,3 +525,4 @@ uint16_t Modbus::calculateCRC(uint8_t *buffer, int length)
 
     return crc;
 }
+

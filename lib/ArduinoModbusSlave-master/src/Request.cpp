@@ -38,30 +38,11 @@ uint8_t Modbus::poll()
         return 0;
     }
 
-    Serial.println("Preparando el búfer de salida...");
     // Prepara el búfer de salida.
     memset(_responseBuffer, 0, MODBUS_MAX_BUFFER);
     _responseBuffer[MODBUS_ADDRESS_INDEX] = _requestBuffer[MODBUS_ADDRESS_INDEX];
     _responseBuffer[MODBUS_FUNCTION_CODE_INDEX] = _requestBuffer[MODBUS_FUNCTION_CODE_INDEX];
     _responseBufferLength = MODBUS_FRAME_SIZE;
-
-
-    Serial.print(_responseBuffer[0],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[1],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[2],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[3],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[4],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[5],HEX);
-    Serial.print(" ");
-    Serial.print(_responseBuffer[6],HEX);
-    Serial.print(" ");
-    Serial.println(_responseBuffer[7],HEX);
-    Serial.println("");
 
     // Valida la solicitud entrante.
     if (!Modbus::validateRequest())
@@ -79,6 +60,7 @@ uint8_t Modbus::poll()
     }
 
     // Escribe la respuesta de creación en la interfaz serial.
+    //Serial.println("Iniciando escritura serial...");
     return Modbus::writeResponse();
 }
 
@@ -129,6 +111,7 @@ uint16_t Modbus::writeResponse()
         // Inicie el modo de transmisión para RS485.
         if (_transmissionControlPin > MODBUS_CONTROL_PIN_NONE)
         {
+            _serialStream.flush();
             digitalWrite(_transmissionControlPin, HIGH);
         }
     }
@@ -141,6 +124,7 @@ uint16_t Modbus::writeResponse()
     uint16_t length = 0;
     if (_serialTransmissionBufferLength > 0)
     {
+
         // Compruebe la longitud máxima de bytes que se enviarán en una llamada.
         uint16_t length = min(
             _serialStream.availableForWrite(),
@@ -154,6 +138,7 @@ uint16_t Modbus::writeResponse()
                 length);
             _responseBufferWriteIndex += length;
             _totalBytesSent += length;
+
         }
 
         // Comprueba si se han enviado todos los datos.
@@ -197,6 +182,7 @@ uint16_t Modbus::writeResponse()
         _responseBufferLength = 0;
     }
 
+
     return length;
 }
 
@@ -209,8 +195,7 @@ bool Modbus::readRequest()
 {
     // Leer un paquete de datos e informar cuando se recibe por completo.
     uint16_t length = _serialStream.available();
-    //Serial.print("Seriallength: ");
-    //Serial.println(length);
+
     if (length > 0)
     {  
         // Si la lectura aún no ha comenzado.
@@ -247,23 +232,6 @@ bool Modbus::readRequest()
 
             length = _serialStream.readBytes(_requestBuffer + _requestBufferLength, MODBUS_MAX_BUFFER - _requestBufferLength);
 
-                // Serial.print(_requestBuffer[0],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[1],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[2],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[3],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[4],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[5],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[6],HEX);
-                // Serial.print(" ");
-                // Serial.print(_requestBuffer[7],HEX);
-                // Serial.println(" ");
-
             // Si este es el primer ciclo de lectura, verifique la dirección para rechazar solicitudes irrelevantes.
             if (_requestBufferLength == 0 && length > MODBUS_ADDRESS_INDEX && !Modbus::relevantAddress(_requestBuffer[MODBUS_ADDRESS_INDEX]))
             {
@@ -287,7 +255,7 @@ bool Modbus::readRequest()
         // Si todavía estamos leyendo pero no se han recibido datos para 1.5T, entonces este mensaje de solicitud está completo.
         if (_isRequestBufferReading && ((micros() - _lastCommunicationTime) > (_halfCharTimeInMicroSecond * MODBUS_HALF_SILENCE_MULTIPLIER)))
         {
-            Serial.println("Solicitud completa: ");
+            //Serial.print("Solicitud completa: ");
             // Detenga la lectura para permitir la lectura de nuevos mensajes.
             _isRequestBufferReading = false;
         }
@@ -297,23 +265,22 @@ bool Modbus::readRequest()
             return false;
         }
     }
-
-                Serial.print(_requestBuffer[0],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[1],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[2],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[3],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[4],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[5],HEX);
-                Serial.print(" ");
-                Serial.print(_requestBuffer[6],HEX);
-                Serial.print(" ");
-                Serial.println(_requestBuffer[7],HEX);
-                Serial.println(" ");
+                // Serial.print(_requestBuffer[0],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[1],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[2],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[3],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[4],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[5],HEX);
+                // Serial.print(" ");
+                // Serial.print(_requestBuffer[6],HEX);
+                // Serial.print(" ");
+                // Serial.println(_requestBuffer[7],HEX);
+                // Serial.println(" ");
 
     return !_isRequestBufferReading && (_requestBufferLength >= MODBUS_FRAME_SIZE);
 }
@@ -335,22 +302,29 @@ bool Modbus::validateRequest()
     bool report_illegal_function=false;
     
     // Verifica la validez de los datos según el código de la función.
-    Serial.print("Codigo de funcion:");
-    Serial.println(_requestBuffer[MODBUS_FUNCTION_CODE_INDEX]);
+    //Serial.print("Codigo de funcion: ");
+    Serial.print(_requestBuffer[MODBUS_FUNCTION_CODE_INDEX],DEC);
     switch (_requestBuffer[MODBUS_FUNCTION_CODE_INDEX])
     {
         case FC_READ_EXCEPTION_STATUS:
+        Serial.println(" -FC_READ_EXCEPTION_STATUS"); 
             // La transmisión no es compatible, así que ignore esta solicitud.
             if (_requestBuffer[MODBUS_ADDRESS_INDEX] == MODBUS_BROADCAST_ADDRESS)
             {
                 return false;
             }
             break;
-
         case FC_READ_COILS:             // Read coils (digital read).
+        Serial.println(" -FC_READ_COILS"); 
+        break;
         case FC_READ_DISCRETE_INPUT:    // Read input state (digital read).
+        Serial.println(" -FC_READ_DISCRETE_INPUT");   
+        break;
         case FC_READ_HOLDING_REGISTERS: // Read holding registers (analog read).
-        case FC_READ_INPUT_REGISTERS:   // Read input registers (analog read).      
+        //Serial.println(" -FC_READ_HOLDING_REGISTERS");
+        break;
+        case FC_READ_INPUT_REGISTERS:{   // Read input registers (analog read).  
+        Serial.println(" -FC_READ_INPUT_REGISTERS: ");  
             // La transmisión no es compatible, así que ignore esta solicitud.
             if (_requestBuffer[MODBUS_ADDRESS_INDEX] == MODBUS_BROADCAST_ADDRESS)
             {
@@ -358,16 +332,21 @@ bool Modbus::validateRequest()
             }
             // Agregar bytes al tamaño de solicitud esperado (2 x Index, 2 x Count).
             expected_requestBufferSize += 4;
+            }
             break;
-
         case FC_WRITE_COIL:     // Write coils (digital write).
+        Serial.println(" -FC_WRITE_COIL"); 
+        break;
         case FC_WRITE_REGISTER: // Write registers (digital write).
+        Serial.println(" -FC_WRITE_REGISTER"); 
             // Agregar bytes al tamaño de solicitud esperado (2 x Index, 2 x Count).
             expected_requestBufferSize += 4;
             break;
-
         case FC_WRITE_MULTIPLE_COILS:
+        Serial.println(" -FC_WRITE_MULTIPLE_COILS");
+        break; 
         case FC_WRITE_MULTIPLE_REGISTERS:     
+        Serial.println(" -FC_WRITE_MULTIPLE_REGISTERS"); 
             // Agregar bytes al tamaño de solicitud esperado (2 x Index, 2 x Count, 1 x Bytes).
             expected_requestBufferSize += 5;
             if (_requestBufferLength >= expected_requestBufferSize)
@@ -376,7 +355,6 @@ bool Modbus::validateRequest()
                 expected_requestBufferSize += _requestBuffer[6];
             }
             break;
-
         default:       
             // Código de función desconocido.
              report_illegal_function=true;
@@ -391,10 +369,10 @@ bool Modbus::validateRequest()
 
     // Verifique la crc, y si no es correcta ignore la solicitud.
     uint16_t crc = readCRC(_requestBuffer, _requestBufferLength);
-    Serial.print("CRC leido: ");
-    Serial.println(crc,HEX);
-    Serial.print("CRC calculado: ");
-    Serial.println(Modbus::calculateCRC(_requestBuffer, _requestBufferLength - MODBUS_CRC_LENGTH),HEX);
+    // Serial.print("CRC leido: ");
+    // Serial.println(crc,HEX);
+    // Serial.print("CRC calculado: ");
+    // Serial.println(Modbus::calculateCRC(_requestBuffer, _requestBufferLength - MODBUS_CRC_LENGTH),HEX);
 
     if (Modbus::calculateCRC(_requestBuffer, _requestBufferLength - MODBUS_CRC_LENGTH) != crc)
     {
@@ -411,7 +389,6 @@ bool Modbus::validateRequest()
      
     // Establezca la longitud a leer de la solicitud a la longitud esperada calculada.
     _requestBufferLength = expected_requestBufferSize;
-    
     return true;
 }
 
@@ -426,11 +403,13 @@ uint8_t Modbus::createResponse()
     uint16_t addressesLength;
     uint8_t callbackIndex;
     uint16_t requestUnitAddress = _requestBuffer[MODBUS_ADDRESS_INDEX];
-  
+
+    //Serial.print("FUNCION DE DEVOLUCION: ");
     // Haga coincidir el código de la función con una devolución de llamada y ejecútelo y prepare el búfer de respuesta.
     switch (_requestBuffer[MODBUS_FUNCTION_CODE_INDEX])
     {
     case FC_READ_EXCEPTION_STATUS:        
+    Serial.println("FC_READ_EXCEPTION_STATUS ");
     // Rechazar solicitudes de lectura de difusión
         if (requestUnitAddress == MODBUS_BROADCAST_ADDRESS)
         {
@@ -442,29 +421,17 @@ uint8_t Modbus::createResponse()
    
         // Ejecuta la devolución de llamada y devuelve el código de estado.
         return Modbus::executeCallback(requestUnitAddress, CB_READ_EXCEPTION_STATUS, 0, 8);
+        break;
 
     case FC_READ_COILS:          // Read coils (digital out state).
-    case FC_READ_DISCRETE_INPUT: // Read input state (digital in).      
-        // Rechazar solicitudes de lectura de difusión
-        if (requestUnitAddress == MODBUS_BROADCAST_ADDRESS)
-        {
-            return STATUS_ILLEGAL_FUNCTION;
-        }
-
-        // Leer la primera dirección y el número de entradas.
-        firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
-        addressesLength = readUInt16(_requestBuffer, MODBUS_DATA_INDEX + 2);
-    
-        // Calcula la longitud de los datos de respuesta y agrégala a la longitud del búfer de salida.
-        _responseBuffer[MODBUS_DATA_INDEX] = (addressesLength / 8) + (addressesLength % 8 != 0);
-        _responseBufferLength += 1 + _responseBuffer[MODBUS_DATA_INDEX];
-       
-        // Ejecuta la devolución de llamada y devuelve el código de estado.
-        callbackIndex = _requestBuffer[MODBUS_FUNCTION_CODE_INDEX] == FC_READ_COILS ? CB_READ_COILS : CB_READ_DISCRETE_INPUTS;
-        return Modbus::executeCallback(requestUnitAddress, callbackIndex, firstAddress, addressesLength);
+    Serial.println("FC_READ_COILS ");
+    break;
+    case FC_READ_DISCRETE_INPUT: // Read input state (digital in). 
+    Serial.println("FC_READ_DISCRETE_INPUT ");     
+    break;
 
     case FC_READ_HOLDING_REGISTERS: // Read holding registers (analog out state)
-    case FC_READ_INPUT_REGISTERS:   // Read input registers (analog in)  
+    //Serial.println("FC_READ_HOLDING_REGISTERS ");
         // Rechazar solicitudes de lectura de difusión
         if (requestUnitAddress == MODBUS_BROADCAST_ADDRESS)
         {
@@ -473,67 +440,42 @@ uint8_t Modbus::createResponse()
 
         // Leer la primera dirección y el número de entradas.
         firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
+        // //Serial.print("Primera direccion de registro: ");
+        // //Serial.println(firstAddress,HEX);
         addressesLength = readUInt16(_requestBuffer, MODBUS_DATA_INDEX + 2);
+        // Serial.print("Longitud de direcciones: ");
+        // Serial.println(addressesLength);
 
         // Calcula la longitud de los datos de respuesta y agrégala a la longitud del búfer de salida.
         _responseBuffer[MODBUS_DATA_INDEX] = 2 * addressesLength;
         _responseBufferLength += 1 + _responseBuffer[MODBUS_DATA_INDEX];
+        // Serial.print("Longitud de respuesta de buffer: ");
+        // Serial.println(_responseBufferLength);
       
         // Ejecuta la devolución de llamada y devuelve el código de estado.
         callbackIndex = _requestBuffer[MODBUS_FUNCTION_CODE_INDEX] == FC_READ_HOLDING_REGISTERS ? CB_READ_HOLDING_REGISTERS : CB_READ_INPUT_REGISTERS;
         return Modbus::executeCallback(requestUnitAddress, callbackIndex, firstAddress, addressesLength);
+        break;
+    case FC_READ_INPUT_REGISTERS:   // Read input registers (analog in)  
+    Serial.println("FC_READ_INPUT_REGISTERS ");
+    break;
 
     case FC_WRITE_COIL: // Write one coil (digital out).       
-        // Leer la dirección.
-        firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
-      
-        // Suma la longitud de los datos de respuesta a la longitud de la salida.
-        _responseBufferLength += 4;
-        // Copie las partes de los datos de la solicitud que deben estar en los datos de respuesta.
-        memcpy(_responseBuffer + MODBUS_DATA_INDEX, _requestBuffer + MODBUS_DATA_INDEX, _responseBufferLength - MODBUS_FRAME_SIZE);
- 
-        // Ejecuta la devolución de llamada y devuelve el código de estado.
-        return Modbus::executeCallback(requestUnitAddress, CB_WRITE_COILS, firstAddress, 1);
+    Serial.println("FC_WRITE_COIL ");
+    break;
 
     case FC_WRITE_REGISTER: // Write one holding register (analog out).
-        // Leer la dirección.
-        firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
-  
-        // Suma la longitud de los datos de respuesta a la longitud de la salida.
-        _responseBufferLength += 4;
-        // Copie las partes de los datos de la solicitud que deben estar en los datos de respuesta.
-        memcpy(_responseBuffer + MODBUS_DATA_INDEX, _requestBuffer + MODBUS_DATA_INDEX, _responseBufferLength - MODBUS_FRAME_SIZE);
- 
-        // Ejecuta la devolución de llamada y devuelve el código de estado.
-        return Modbus::executeCallback(requestUnitAddress, CB_WRITE_HOLDING_REGISTERS, firstAddress, 1);
+    Serial.println("FC_WRITE_REGISTER ");
+    break;
 
-    case FC_WRITE_MULTIPLE_COILS: // Write multiple coils (digital out)       
-        // Leer la primera dirección y el número de salidas.
-        firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
-        addressesLength = readUInt16(_requestBuffer, MODBUS_DATA_INDEX + 2);
-
-        // Suma la longitud de los datos de respuesta a la longitud de la salida.
-        _responseBufferLength += 4;
-        // Copie las partes de los datos de la solicitud que deben estar en los datos de respuesta.
-        memcpy(_responseBuffer + MODBUS_DATA_INDEX, _requestBuffer + MODBUS_DATA_INDEX, _responseBufferLength - MODBUS_FRAME_SIZE);
-
-        // Ejecuta la devolución de llamada y devuelve el código de estado.
-        return Modbus::executeCallback(requestUnitAddress, CB_WRITE_COILS, firstAddress, addressesLength);
+    case FC_WRITE_MULTIPLE_COILS: // Write multiple coils (digital out)  
+    Serial.println("FC_WRITE_MULTIPLE_COILS ");     
+    break;
 
     case FC_WRITE_MULTIPLE_REGISTERS: // Write multiple holding registers (analog out). 
-        // Leer la primera dirección y el número de salidas.
-        firstAddress = readUInt16(_requestBuffer, MODBUS_DATA_INDEX);
-        addressesLength = readUInt16(_requestBuffer, MODBUS_DATA_INDEX + 2);
+    break;
 
-        // Suma la longitud de los datos de respuesta a la longitud de la salida.
-        _responseBufferLength += 4;
-        // Copie las partes de los datos de la solicitud que deben estar en los datos de respuesta.
-        memcpy(_responseBuffer + MODBUS_DATA_INDEX, _requestBuffer + MODBUS_DATA_INDEX, _responseBufferLength - MODBUS_FRAME_SIZE);
-
-        // Ejecuta la devolución de llamada y devuelve el código de estado.
-        return Modbus::executeCallback(requestUnitAddress, CB_WRITE_HOLDING_REGISTERS, firstAddress, addressesLength);
-
-        default:
+    default:
         return STATUS_ILLEGAL_FUNCTION;
     }
 }
